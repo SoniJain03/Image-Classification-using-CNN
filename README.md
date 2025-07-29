@@ -52,6 +52,12 @@ The app will open at `http://localhost:8501`
 ✅ Prediction: Dog 
 🔍 Confidence: 0.93
 ```
+## ### Download Model
+[Click here to download `cat_dog_model.h5`]
+(https://drive.google.com/file/d/1gszaN7ZOjE1Ljc1DRpo2TyGJ2KB-nOLW/view?usp=sharing)
+
+After download, place it in the root folder of the project.
+
 ## Author
 - Soni Jain
 - Model training done in Google Colab
