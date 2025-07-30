@@ -1,11 +1,11 @@
 import streamlit as st
 import tensorflow as tf
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps
 import os
 import gdown
 
-# Download & cache the model from Google Drive
+# Download and cache model
 @st.cache_resource
 def load_model():
     model_path = "cat_dog_model.h5"
@@ -17,25 +17,43 @@ def load_model():
         )
     return tf.keras.models.load_model(model_path)
 
-# Load the model
+# Load model
 model = load_model()
+
+# Class labels
 class_names = ["Cat", "Dog"]
 
-# Title and description
+# Sidebar "About" section
+st.sidebar.title("📘 About")
+st.sidebar.info(
+    """
+    **Cat vs Dog Classifier**  
+    This project uses a Convolutional Neural Network (CNN) trained on a dataset of 25,000 images.  
+    Upload an image of a **cat or dog**, and the model will predict the species with confidence.
+    
+    **Tech stack**: TensorFlow · Streamlit · Python  
+    Model is hosted via Google Drive.
+    """
+)
+
+# Main app
 st.title("🐱🐶 Cat vs Dog Classifier")
-st.write("Upload an image of a cat or dog and the model will predict which it is.")
+st.write("Upload an image of a cat or dog, and get an instant prediction!")
 
 # File uploader
-uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
+uploaded_file = st.file_uploader("Upload an image...", type=["jpg", "jpeg", "png"])
+
+# When file is uploaded
 if uploaded_file:
-    image = Image.open(uploaded_file).convert("RGB").resize((180, 180))  # Ensure 3 channels
+    image = Image.open(uploaded_file).convert("RGB")
     st.image(image, caption="Uploaded Image", use_column_width=True)
 
-    # Preprocess image
+    # Preprocess the image
+    image = ImageOps.fit(image, (180, 180), Image.Resampling.LANCZOS)
     img_array = np.array(image) / 255.0
     img_array = img_array.reshape(1, 180, 180, 3)
 
-    # Predict
+    # Make prediction
     prediction = model.predict(img_array)[0][0]
     predicted_class = class_names[int(prediction > 0.5)]
     confidence = prediction if predicted_class == "Dog" else 1 - prediction
