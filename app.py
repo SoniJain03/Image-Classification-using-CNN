@@ -2,67 +2,83 @@ import streamlit as st
 import tensorflow as tf
 import numpy as np
 from PIL import Image
-import gdown
-import os
 
-# --------- Page Config ---------
-st.set_page_config(page_title="Cat vs Dog Classifier", page_icon="🐾", layout="centered")
+# ---------------------- PAGE CONFIG ----------------------
+st.set_page_config(page_title="CNN Image Classifier", layout="centered")
 
-# --------- Sidebar Info ---------
-st.sidebar.title("📘 About the Project")
-st.sidebar.markdown("""
-Welcome to the **Cat vs Dog Classifier** 🐶🐱
-
-This project uses a **CNN model** built with TensorFlow/Keras to predict whether an uploaded image is of a **cat** or **dog**.
-
-### 💡 Features:
-- Pre-trained on 25,000+ labeled images.
-- Image input size: **180x180**
-- Accurate prediction with confidence score.
-- Deployed on **Streamlit Cloud**.
-
-### 🔍 How to Use:
-1. Upload an image of a cat or dog.
-2. The model will process and classify the image.
-3. Get prediction + confidence.
-
-Made with ❤️ by Soni Jain
-""")
-
-# --------- Model Setup ---------
-MODEL_PATH = "cat_dog_model.h5"
-MODEL_URL = "https://drive.google.com/uc?id=1gszaN7ZOjE1Ljc1DRpo2TyGJ2KB-nOLW"
-
+# ---------------------- LOAD MODEL ----------------------
 @st.cache_resource
 def load_model():
-    if not os.path.exists(MODEL_PATH):
-        gdown.download(MODEL_URL, MODEL_PATH, quiet=False)
-    return tf.keras.models.load_model(MODEL_PATH)
+    model = tf.keras.models.load_model("cat_dog_model.h5")  # Make sure model.h5 is in same folder
+    return model
 
 model = load_model()
 
-# --------- Prediction Function ---------
-def preprocess(image: Image.Image) -> np.ndarray:
-    image = image.resize((180, 180))  # ✅ Crucial step
-    image = np.array(image) / 255.0
-    return image.reshape(1, 180, 180, 3)
+# ---------------------- CLASS NAMES ----------------------
+class_names = ['Cat', 'Dog']  # Update this list with your actual class labels
 
-def predict(image: Image.Image) -> str:
-    input_array = preprocess(image)
-    prediction = model.predict(input_array)[0][0]
-    label = "Dog" if prediction > 0.5 else "Cat"
-    confidence = prediction if label == "Dog" else 1 - prediction
-    return f"**Prediction:** {label} ({confidence * 100:.2f}% confidence)"
+# ---------------------- PREPROCESS FUNCTION ----------------------
+def preprocess_image(image):
+    image = image.resize((150, 150))  # Match model input
+    image = np.array(image) / 255.0   # Normalize
+    image = np.expand_dims(image, axis=0)  # Add batch dimension
+    return image
 
-# --------- Main App ---------
-st.title("🐾 Cat vs Dog Image Classifier")
+# ---------------------- SIDEBAR (ABOUT SECTION) ----------------------
+st.sidebar.markdown("## 🧠 About This App")
+st.sidebar.markdown(
+    """
+Welcome to the **CNN Image Classifier**!  
+This app uses a trained **Convolutional Neural Network** to classify images of **Cats and Dogs**.
 
-uploaded_file = st.file_uploader("Upload an image of a cat or dog:", type=["jpg", "jpeg", "png"])
+---
+
+### 🔍 How It Works:
+- Upload a JPG or PNG image.
+- The model will analyze the image.
+- You'll get the **predicted class** and a **confidence score**.
+
+---
+
+### 🛠️ Built With:
+- Python 🐍  
+- Streamlit 🎈  
+- TensorFlow ⚙️  
+- Pillow 🖼️ + NumPy 🔢  
+
+---
+
+👨‍💻 *Developed by Soni Jain*  
+📁 Model trained locally and loaded from `.h5` file.
+"""
+)
+
+# ---------------------- MAIN PAGE ----------------------
+st.title("🐾 CNN Image Classifier")
+st.write("Upload an image and the model will predict whether it's a **Cat** or a **Dog**.")
+
+# ---------------------- IMAGE UPLOADER ----------------------
+uploaded_file = st.file_uploader("📷 Upload an image", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
     image = Image.open(uploaded_file).convert("RGB")
     st.image(image, caption="Uploaded Image", use_column_width=True)
-    
-    with st.spinner("Predicting..."):
-        result = predict(image)
-        st.success(result)
+
+    # Predict
+    with st.spinner("🔎 Classifying..."):
+        preprocessed_img = preprocess_image(image)
+        predictions = model.predict(preprocessed_img)
+        predicted_index = np.argmax(predictions)
+        confidence = float(np.max(predictions))
+        predicted_class = class_names[predicted_index]
+
+    # Output
+    st.success(f"### 🧠 Prediction: `{predicted_class}`")
+    st.info(f"🔢 Confidence Score: **{confidence:.2f}**")
+
+    # Detailed prediction scores
+    st.subheader("📊 Prediction Scores:")
+    for idx, prob in enumerate(predictions[0]):
+        st.write(f"- **{class_names[idx]}**: {prob:.4f}")
+else:
+    st.warning("👈 Please upload an image to get started.")
