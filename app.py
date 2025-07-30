@@ -5,7 +5,7 @@ from PIL import Image, ImageOps
 import os
 import gdown
 
-# Download and cache model
+# ---- Load Model ----
 @st.cache_resource
 def load_model():
     model_path = "cat_dog_model.h5"
@@ -17,46 +17,42 @@ def load_model():
         )
     return tf.keras.models.load_model(model_path)
 
-# Load model
 model = load_model()
-
-# Class labels
 class_names = ["Cat", "Dog"]
 
-# Sidebar "About" section
+# ---- Sidebar Info ----
 st.sidebar.title("📘 About")
-st.sidebar.info(
-    """
-    **Cat vs Dog Classifier**  
-    This project uses a Convolutional Neural Network (CNN) trained on a dataset of 25,000 images.  
-    Upload an image of a **cat or dog**, and the model will predict the species with confidence.
-    
-    **Tech stack**: TensorFlow · Streamlit · Python  
-    Model is hosted via Google Drive.
-    """
-)
+st.sidebar.markdown("""
+This is a **deep learning** model built using **CNN** to classify images of cats and dogs.
 
-# Main app
+- 🧠 Framework: TensorFlow / Keras  
+- 📊 Trained on: 25,000+ labeled images  
+- 🐾 Input: JPG or PNG image  
+- ☁️ Model hosted via Google Drive  
+""")
+
+# ---- Main App UI ----
 st.title("🐱🐶 Cat vs Dog Classifier")
-st.write("Upload an image of a cat or dog, and get an instant prediction!")
+st.markdown("Upload an image of a **cat** or **dog**, and the model will predict which it is!")
 
-# File uploader
 uploaded_file = st.file_uploader("Upload an image...", type=["jpg", "jpeg", "png"])
 
-# When file is uploaded
 if uploaded_file:
     image = Image.open(uploaded_file).convert("RGB")
     st.image(image, caption="Uploaded Image", use_column_width=True)
 
-    # Preprocess the image
+    # ---- Preprocessing ----
     image = ImageOps.fit(image, (180, 180), Image.Resampling.LANCZOS)
     img_array = np.array(image) / 255.0
-    img_array = img_array.reshape(1, 180, 180, 3)
 
-    # Make prediction
-    prediction = model.predict(img_array)[0][0]
-    predicted_class = class_names[int(prediction > 0.5)]
-    confidence = prediction if predicted_class == "Dog" else 1 - prediction
+    if img_array.shape != (180, 180, 3):
+        st.error("Image shape is incompatible. Please upload a valid RGB image.")
+    else:
+        img_array = img_array.reshape(1, 180, 180, 3)
 
-    # Display result
-    st.success(f"Prediction: **{predicted_class}** ({confidence * 100:.2f}% confidence)")
+        # ---- Prediction ----
+        prediction = model.predict(img_array)[0][0]
+        predicted_class = class_names[int(prediction > 0.5)]
+        confidence = prediction if predicted_class == "Dog" else 1 - prediction
+
+        st.success(f"**Prediction:** {predicted_class} ({confidence * 100:.2f}% confidence)")
