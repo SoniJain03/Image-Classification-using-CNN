@@ -1,58 +1,68 @@
 import streamlit as st
 import tensorflow as tf
 import numpy as np
-from PIL import Image, ImageOps
-import os
+from PIL import Image
 import gdown
+import os
 
-# ---- Load Model ----
-@st.cache_resource
-def load_model():
-    model_path = "cat_dog_model.h5"
-    if not os.path.exists(model_path):
-        gdown.download(
-            "https://drive.google.com/uc?id=1gszaN7ZOjE1Ljc1DRpo2TyGJ2KB-nOLW",
-            model_path,
-            quiet=False
-        )
-    return tf.keras.models.load_model(model_path)
+# --------- Page Config ---------
+st.set_page_config(page_title="Cat vs Dog Classifier", page_icon="🐾", layout="centered")
 
-model = load_model()
-class_names = ["Cat", "Dog"]
-
-# ---- Sidebar Info ----
-st.sidebar.title("📘 About")
+# --------- Sidebar Info ---------
+st.sidebar.title("📘 About the Project")
 st.sidebar.markdown("""
-This is a **deep learning** model built using **CNN** to classify images of cats and dogs.
+Welcome to the **Cat vs Dog Classifier** 🐶🐱
 
-- 🧠 Framework: TensorFlow / Keras  
-- 📊 Trained on: 25,000+ labeled images  
-- 🐾 Input: JPG or PNG image  
-- ☁️ Model hosted via Google Drive  
+This project uses a **CNN model** built with TensorFlow/Keras to predict whether an uploaded image is of a **cat** or **dog**.
+
+### 💡 Features:
+- Pre-trained on 25,000+ labeled images.
+- Image input size: **180x180**
+- Accurate prediction with confidence score.
+- Deployed on **Streamlit Cloud**.
+
+### 🔍 How to Use:
+1. Upload an image of a cat or dog.
+2. The model will process and classify the image.
+3. Get prediction + confidence.
+
+Made with ❤️ by Soni Jain
 """)
 
-# ---- Main App UI ----
-st.title("🐱🐶 Cat vs Dog Classifier")
-st.markdown("Upload an image of a **cat** or **dog**, and the model will predict which it is!")
+# --------- Model Setup ---------
+MODEL_PATH = "cat_dog_model.h5"
+MODEL_URL = "https://drive.google.com/uc?id=1gszaN7ZOjE1Ljc1DRpo2TyGJ2KB-nOLW"
 
-uploaded_file = st.file_uploader("Upload an image...", type=["jpg", "jpeg", "png"])
+@st.cache_resource
+def load_model():
+    if not os.path.exists(MODEL_PATH):
+        gdown.download(MODEL_URL, MODEL_PATH, quiet=False)
+    return tf.keras.models.load_model(MODEL_PATH)
 
-if uploaded_file:
+model = load_model()
+
+# --------- Prediction Function ---------
+def preprocess(image: Image.Image) -> np.ndarray:
+    image = image.resize((180, 180))  # ✅ Crucial step
+    image = np.array(image) / 255.0
+    return image.reshape(1, 180, 180, 3)
+
+def predict(image: Image.Image) -> str:
+    input_array = preprocess(image)
+    prediction = model.predict(input_array)[0][0]
+    label = "Dog" if prediction > 0.5 else "Cat"
+    confidence = prediction if label == "Dog" else 1 - prediction
+    return f"**Prediction:** {label} ({confidence * 100:.2f}% confidence)"
+
+# --------- Main App ---------
+st.title("🐾 Cat vs Dog Image Classifier")
+
+uploaded_file = st.file_uploader("Upload an image of a cat or dog:", type=["jpg", "jpeg", "png"])
+
+if uploaded_file is not None:
     image = Image.open(uploaded_file).convert("RGB")
     st.image(image, caption="Uploaded Image", use_column_width=True)
-
-    # ---- Preprocessing ----
-    image = ImageOps.fit(image, (180, 180), Image.Resampling.LANCZOS)
-    img_array = np.array(image) / 255.0
-
-    if img_array.shape != (180, 180, 3):
-        st.error("Image shape is incompatible. Please upload a valid RGB image.")
-    else:
-        img_array = img_array.reshape(1, 180, 180, 3)
-
-        # ---- Prediction ----
-        prediction = model.predict(img_array)[0][0]
-        predicted_class = class_names[int(prediction > 0.5)]
-        confidence = prediction if predicted_class == "Dog" else 1 - prediction
-
-        st.success(f"**Prediction:** {predicted_class} ({confidence * 100:.2f}% confidence)")
+    
+    with st.spinner("Predicting..."):
+        result = predict(image)
+        st.success(result)
